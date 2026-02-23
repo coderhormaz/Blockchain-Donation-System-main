@@ -5,12 +5,12 @@ import type { Donation } from '@/components/DonationList';
 
 // Base Mainnet configuration
 const BASE_MAINNET_CONFIG = {
-  chainId: 8453, // Base Mainnet
-  chainIdHex: '0x2105',
+  chainId: Number(import.meta.env.VITE_BASE_CHAIN_ID) || 8453,
+  chainIdHex: '0x' + (Number(import.meta.env.VITE_BASE_CHAIN_ID) || 8453).toString(16),
   chainName: 'Base Mainnet',
-  rpcUrl: 'https://mainnet.base.org',
+  rpcUrl: import.meta.env.VITE_BASE_RPC_URL || 'https://mainnet.base.org',
   blockExplorer: 'https://basescan.org',
-  contractAddress: "0x4c675ebfbf0be454d0632a28e167f78b9f775d90" // User's donation address
+  contractAddress: import.meta.env.VITE_DONATION_ADDRESS || '0x4c675ebfbf0be454d0632a28e167f78b9f775d90',
 };
 
 export function useDonations(account: string | null) {
@@ -41,8 +41,8 @@ export function useDonations(account: string | null) {
       return;
     }
 
-  setIsLoading(true);
-  const networkConfig = BASE_MAINNET_CONFIG;
+    setIsLoading(true);
+    const networkConfig = BASE_MAINNET_CONFIG;
 
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
@@ -54,8 +54,8 @@ export function useDonations(account: string | null) {
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: networkConfig.chainIdHex }],
           });
-        } catch (switchError: any) {
-          if (switchError.code === 4902) {
+        } catch (switchError: unknown) {
+          if ((switchError as { code?: number })?.code === 4902) {
             // Network not added, add Base mainnet
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
@@ -105,19 +105,20 @@ export function useDonations(account: string | null) {
         description: `Thank you for donating ${amount} ETH on Base Mainnet!`,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Donation error:', error);
       
+      const errCode = (error as { code?: string | number })?.code;
       let errorMessage = "Failed to process donation";
-      if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
+      if (errCode === 'ACTION_REJECTED' || errCode === 4001) {
         errorMessage = "Transaction was cancelled by user";
-      } else if (error.code === 'INSUFFICIENT_FUNDS' || error.code === -32000) {
+      } else if (errCode === 'INSUFFICIENT_FUNDS' || errCode === -32000) {
         errorMessage = "Insufficient funds for transaction and gas fees";
-      } else if (error.code === 'NETWORK_ERROR' || error.code === -32603) {
+      } else if (errCode === 'NETWORK_ERROR' || errCode === -32603) {
         errorMessage = "Network error. Please check your connection and try again";
-      } else if (error.code === 'INVALID_ARGUMENT') {
+      } else if (errCode === 'INVALID_ARGUMENT') {
         errorMessage = "Invalid transaction parameters. Please try again";
-      } else if (error.code === 4902) {
+      } else if (errCode === 4902) {
         errorMessage = `Please add Base Mainnet to your wallet`;
       }
 

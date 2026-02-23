@@ -5,20 +5,22 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { WalletButton } from '@/components/ui/wallet-button';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, Send } from 'lucide-react';
+import { Heart, Loader2 } from 'lucide-react';
 
 interface DonationFormProps {
   account: string | null;
-  onDonate: (amount: string, cause: string) => void;
+  onDonate: (amount: string, cause: string) => Promise<void>;
   isLoading: boolean;
 }
+
+const PRESET_AMOUNTS = ['0.001', '0.005', '0.01', '0.05', '0.1'];
 
 export function DonationForm({ account, onDonate, isLoading }: DonationFormProps) {
   const [amount, setAmount] = useState('');
   const [cause, setCause] = useState('');
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!account) {
@@ -30,10 +32,21 @@ export function DonationForm({ account, onDonate, isLoading }: DonationFormProps
       return;
     }
 
-    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+    const parsedAmount = parseFloat(amount);
+
+    if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
       toast({
         title: "Invalid Amount",
         description: "Please enter a positive donation amount.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (parsedAmount > 100) {
+      toast({
+        title: "Amount Too Large",
+        description: "Maximum donation is 100 ETH per transaction for safety.",
         variant: "destructive",
       });
       return;
@@ -57,7 +70,7 @@ export function DonationForm({ account, onDonate, isLoading }: DonationFormProps
       return;
     }
 
-    onDonate(amount, cause.trim());
+    await onDonate(amount, cause.trim());
     setAmount('');
     setCause('');
   };
@@ -65,7 +78,8 @@ export function DonationForm({ account, onDonate, isLoading }: DonationFormProps
   return (
     <Card className="bg-gradient-card shadow-warm border-border/50">
       <CardHeader>
-        <CardTitle className="text-xl">
+        <CardTitle className="text-xl flex items-center gap-2">
+          <Heart className="w-5 h-5 text-primary" />
           Make a Donation
         </CardTitle>
       </CardHeader>
@@ -78,12 +92,26 @@ export function DonationForm({ account, onDonate, isLoading }: DonationFormProps
               type="number"
               step="any"
               min="0"
-              placeholder="0.00001"
+              max="100"
+              placeholder="0.001"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               disabled={!account || isLoading}
               className="bg-background border-border/50 focus:border-primary"
             />
+            <div className="flex flex-wrap gap-2">
+              {PRESET_AMOUNTS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setAmount(preset)}
+                  disabled={!account || isLoading}
+                  className="px-3 py-1 text-xs rounded-full border border-border/50 bg-background hover:bg-secondary hover:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {preset} ETH
+                </button>
+              ))}
+            </div>
           </div>
           
           <div className="space-y-2">
@@ -108,7 +136,17 @@ export function DonationForm({ account, onDonate, isLoading }: DonationFormProps
             disabled={!account || isLoading || !amount || !cause.trim()}
             className="w-full"
           >
-            {isLoading ? 'Processing...' : 'Donate Now'}
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Processing Transaction...
+              </>
+            ) : (
+              <>
+                <Heart className="w-4 h-4 mr-2" />
+                Donate Now
+              </>
+            )}
           </WalletButton>
 
           {!account && (

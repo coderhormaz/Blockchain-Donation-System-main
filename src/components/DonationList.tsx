@@ -133,3 +133,4 @@ export function DonationList({ donations }: DonationListProps) {
       </CardContent>
     </Card>
   );
+}

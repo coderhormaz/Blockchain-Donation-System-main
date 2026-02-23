@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
 import { WalletButton } from '@/components/ui/wallet-button';
 import { useToast } from '@/hooks/use-toast';
-import { Wallet, ExternalLink } from 'lucide-react';
+import { Wallet, ExternalLink, LogOut } from 'lucide-react';
 
 interface WalletConnectionProps {
   onAccountChange: (account: string | null) => void;
@@ -26,6 +25,7 @@ export function WalletConnection({ onAccountChange }: WalletConnectionProps) {
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkConnection = async () => {
@@ -80,11 +80,12 @@ export function WalletConnection({ onAccountChange }: WalletConnectionProps) {
         title: "Wallet Connected",
         description: `Connected to ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error connecting wallet:', error);
+      const message = error instanceof Error ? error.message : "Failed to connect wallet";
       toast({
         title: "Connection Failed",
-        description: error.message || "Failed to connect wallet",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -96,11 +97,20 @@ export function WalletConnection({ onAccountChange }: WalletConnectionProps) {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  const disconnectWallet = () => {
+    setAccount(null);
+    onAccountChange(null);
+    toast({
+      title: "Wallet Disconnected",
+      description: "Your wallet has been disconnected.",
+    });
+  };
+
   if (account) {
     return (
-      <div className="flex items-center gap-3 bg-gradient-card p-3 rounded-lg shadow-warm">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-success rounded-full"></div>
+      <div className="flex items-center gap-2 sm:gap-3 bg-gradient-card p-2 sm:p-3 rounded-lg shadow-warm">
+        <div className="hidden sm:flex items-center gap-2">
+          <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
           <span className="text-sm text-muted-foreground">Connected</span>
         </div>
         <div className="flex items-center gap-2 bg-background px-3 py-2 rounded-md">
@@ -110,9 +120,18 @@ export function WalletConnection({ onAccountChange }: WalletConnectionProps) {
         <WalletButton
           variant="outline"
           size="sm"
-          onClick={() => window.open(`https://sepolia.etherscan.io/address/${account}`, '_blank')}
+          onClick={() => window.open(`https://basescan.org/address/${account}`, '_blank')}
+          title="View on BaseScan"
         >
           <ExternalLink className="w-4 h-4" />
+        </WalletButton>
+        <WalletButton
+          variant="outline"
+          size="sm"
+          onClick={disconnectWallet}
+          title="Disconnect Wallet"
+        >
+          <LogOut className="w-4 h-4" />
         </WalletButton>
       </div>
     );
